@@ -1,46 +1,59 @@
-import openpyxl
-from openpyxl import Workbook
-import os
+from sqlalchemy import Column, Integer, String
+from db_config import Base, Session
 
-EXCEL_FILE = 'clients_data.xlsx'
+class Client(Base):
+    __tablename__ = 'clients'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, unique=True, nullable=False)  # уникальный user_id
+    name = Column(String, nullable=False)
+    surname = Column(String, nullable=False)
+    service = Column(String, nullable=True)
+    added_service = Column(String, nullable=True)
+    day = Column(String, nullable=True)
+    time = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
 
-def create_excel_file_if_not_exists():
-    if not os.path.exists(EXCEL_FILE):
-        print(f"Файл {EXCEL_FILE} не существует. Создаём новый файл...")
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Clients"
-        ws.append(["Номер", "ID клиента", "Имя", "Фамилия", "Услуга", "Доп.услуга", "Дата", "Время", "Номер телефона"])
+def save_client_data(user_id, name=None, surname=None, service=None, added_service=None, day=None, time=None, phone=None):
+    """Добавляет или обновляет данные клиента в базе."""
+    session = Session()
+    try:
+        # Проверяем, существует ли клиент с указанным user_id
+        client = session.query(Client).filter_by(user_id=user_id).first()
 
-        wb.save(EXCEL_FILE)
-        print(f"Файл {EXCEL_FILE} создан успешно.")
-    else:
-        print(f"Файл {EXCEL_FILE} уже существует.")
+        if client:
+            # Если клиент существует, обновляем только новые данные
+            if service:
+                client.service = service
+            if added_service:
+                client.added_service = added_service
+            if day:
+                client.day = day
+            if time:
+                client.time = time
+            if name or surname or phone:
+                print(f"Имя, фамилия и телефон не обновлены для существующего клиента user_id {user_id}.")
+            print(f"Данные клиента с user_id {user_id} обновлены.")
+        else:
+            # Если клиента нет, создаём нового
+            if not (name and surname and phone):
+                print(f"Ошибка: Для нового клиента user_id {user_id} необходимо указать имя, фамилию и телефон.")
+                return
+            client = Client(
+                user_id=user_id,
+                name=name,
+                surname=surname,
+                service=service,
+                added_service=added_service,
+                day=day,
+                time=time,
+                phone=phone
+            )
+            session.add(client)
+            print(f"Новый клиент {name} {surname} (user_id: {user_id}) добавлен.")
 
-def save_client_data(user_id, name, surname, service, added_service, day, time, phone):
-    wb = openpyxl.load_workbook(EXCEL_FILE)
-    ws = wb.active
-
-    client_exists = False
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        if row[1] == user_id and row[2] == name and row[3] == surname:
-            client_exists = True
-            client_row = row[0]
-            break
-
-    if client_exists:
-        for row in ws.iter_rows(min_row=2):
-            if row[0].value == client_row:
-                row[4].value = service
-                row[5].value = added_service
-                row[6].value = day
-                row[7].value = time
-                row[8].value = phone
-                print(f"Данные клиента с user_id {user_id} обновлены.")
-                break
-    else:
-        next_id = ws.max_row
-        ws.append([next_id, user_id, name, surname, service, added_service, day, time, phone])
-        print(f"Новый клиент {name} {surname} (user_id: {user_id}) добавлен.")
-
-    wb.save(EXCEL_FILE)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        print(f"Ошибка при сохранении данных клиента: {e}")
+    finally:
+        session.close()

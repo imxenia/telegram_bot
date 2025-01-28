@@ -1,31 +1,52 @@
-import openpyxl
+import sqlite3
+from telebot import types
 
-EXCEL_FILE = 'clients_data.xlsx'
+DATABASE_FILE = 'clients_data.db'
 
 def show_notes(bot, message):
     chat_id = message.chat.id
 
-    wb = openpyxl.load_workbook(EXCEL_FILE)
-    ws = wb.active
+    # Подключение к базе данных SQLite
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
 
-    user_found = False
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        if row[1] == chat_id:
-            service = row[4] or 'Услуга не указана'
-            added_service = row[5] or ''
-            day = row[6] or 'Дата не указана'
-            time = row[7] or 'Время не указано'
+    try:
+        # Поиск записи о пользователе по chat_id
+        cursor.execute("SELECT service, added_service, day, time FROM clients WHERE user_id=?", (chat_id,))
+        user_data = cursor.fetchone()
 
+        if user_data:
+            service, added_service, day, time = user_data
+            # Формирование сообщения с учётом дополнительных услуг
             if added_service:
-                note_message = (f"Вы записаны на услугу «{service}» и «{added_service}» {day} в {time}🌿"
+                note_message = (f"Вы записаны на услугу «{service}» и «{added_service}» {day} в {time}🕊️\n"
+                                "\nНапомню адрес и номер телефона:"
+                                "\n📍ул. Саврасова, д. 86, студия «Xeni_brows»"
+                                "\n☎️ +7(920)423-23-38\n"
+                                "\nЕсли что-то изменится, просьба сообщить заранее🤍"
                                 f"\nЖдём Вас с нетерпением!")
             else:
-                note_message = (f"Вы записаны на услугу «{service}» {day} в {time}🌿"
+                note_message = (f"Вы записаны на услугу «{service}» {day} в {time}🕊️\n"
+                                "\nНапомню адрес и номер телефона:"
+                                "\n📍ул. Саврасова, д. 86, студия «Xeni_brows»"
+                                "\n☎️ +7(920)423-23-38\n"
+                                "\nЕсли что-то изменится, просьба сообщить заранее🤍"
                                 f"\nЖдём Вас с нетерпением!")
 
+            # Отправка сообщения пользователю
             bot.send_message(chat_id, note_message)
-            user_found = True
-            break
+        else:
+            # Если запись не найдена, отправляем сообщение с возможностью записаться
+            keyboard = types.InlineKeyboardMarkup()
+            book_button = types.InlineKeyboardButton(text="Записаться", callback_data="book_service")
+            keyboard.add(book_button)
 
-    if not user_found:
-        bot.send_message(chat_id, "Записи не найдены.")
+            bot.send_message(chat_id, "У вас пока нет записей, но мы можем это исправить😇", reply_markup=keyboard)
+
+    except Exception as e:
+        # Обработка ошибок
+        print(f"Произошла ошибка при получении записей: {e}")
+    finally:
+        # Закрытие соединения с базой данных
+        conn.close()
+
