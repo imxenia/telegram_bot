@@ -39,7 +39,7 @@ def notes_handler(message):
 def delete_handler(message):
     confirm_delete(bot, message)
 
-@bot.message_handler(func=lambda message: not message.text.startswith('/'))
+@bot.message_handler(func=lambda message: message.text and not message.text.startswith('/'))
 def message_handler(message):
     chat_id = message.chat.id
     # Если пользователь не находится в процессе какого-либо действия

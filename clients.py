@@ -31,8 +31,8 @@ def save_client_data(user_id, name=None, surname=None, service=None, added_servi
             if time:
                 client.time = time
             if name or surname or phone:
-                print(f"Имя, фамилия и телефон не обновлены для существующего клиента user_id {user_id}.")
-            print(f"Данные клиента с user_id {user_id} обновлены.")
+                print(f"Имя, фамилия и телефон остались прежними для существующего клиента user_id={user_id}.")
+            print(f"День и время записи клиента user_id={user_id} обновлены.")
         else:
             # Если клиента нет, создаём нового
             if not (name and surname and phone):
